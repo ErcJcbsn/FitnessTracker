@@ -1,4 +1,5 @@
 package com.example.progressiontracker
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,20 +11,19 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 /**
- * The main dashboard screen of the application.
- * It displays a list of created workouts and provides navigation to other features.
+ * The main dashboard screen of the v2.0 application.
  *
- * @param workouts The list of workout plans to display.
- * @param onStartWorkout A callback invoked when the user taps on a workout to start it.
- * @param onNavigateToWorkoutCreation A callback to navigate to the workout creation screen.
- * @param onNavigateToExerciseLibrary A callback to navigate to the exercise library.
- * @param onNavigateToHistory A callback to navigate to the workout history screen.
+ * @param workouts The list of workout templates (with their sets) to display.
+ * @param onStartWorkout Callback invoked when the user taps on a workout to start it.
+ * @param onNavigateToWorkoutCreation Callback to navigate to the workout creation screen.
+ * @param onNavigateToExerciseLibrary Callback to navigate to the exercise library.
+ * @param onNavigateToHistory Callback to navigate to the workout history screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    workouts: List<Workout>,
-    onStartWorkout: (Workout) -> Unit,
+    workouts: List<WorkoutWithSets>,
+    onStartWorkout: (WorkoutWithSets) -> Unit,
     onNavigateToWorkoutCreation: () -> Unit,
     onNavigateToExerciseLibrary: () -> Unit,
     onNavigateToHistory: () -> Unit
@@ -31,7 +31,7 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Fitness Tracker") }
+                title = { Text("Progression Tracker") }
             )
         }
     ) { paddingValues ->
@@ -63,7 +63,6 @@ fun HomeScreen(
 
             Text("My Workouts", style = MaterialTheme.typography.titleLarge)
 
-            // Display list of workouts or an empty state message.
             if (workouts.isEmpty()) {
                 Box(
                     modifier = Modifier.weight(1f),
@@ -71,9 +70,7 @@ fun HomeScreen(
                 ) {
                     Text(
                         text = "You haven't created any workouts yet.\nTap 'New Workout' to get started.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        textAlign = TextAlign.Center
                     )
                 }
             } else {
@@ -81,8 +78,11 @@ fun HomeScreen(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(workouts) { workout ->
-                        WorkoutCard(workout = workout, onClick = { onStartWorkout(workout) })
+                    items(workouts) { workoutWithSets ->
+                        WorkoutCard(
+                            workoutWithSets = workoutWithSets,
+                            onClick = { onStartWorkout(workoutWithSets) }
+                        )
                     }
                 }
             }
@@ -90,29 +90,25 @@ fun HomeScreen(
     }
 }
 
-/**
- * A card Composable to display a single workout plan in the list.
- *
- * @param workout The workout to display.
- * @param onClick The action to perform when the card is clicked.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WorkoutCard(workout: Workout, onClick: () -> Unit) {
+fun WorkoutCard(workoutWithSets: WorkoutWithSets, onClick: () -> Unit) {
+    // Calculate the number of unique exercises in the workout
+    val exerciseCount = workoutWithSets.sets.map { it.exerciseId }.distinct().size
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        onClick = onClick, // Make the entire card clickable
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        onClick = onClick
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = workout.name,
+                text = workoutWithSets.workout.name,
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
-                text = "${workout.exerciseIds.size} exercises",
+                text = "$exerciseCount exercises, ${workoutWithSets.sets.size} total sets",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

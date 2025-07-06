@@ -1,4 +1,5 @@
 package com.example.progressiontracker
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,18 +13,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * A Jetpack Compose screen that displays a list of all available exercises.
- * It also provides a button to navigate to the exercise creation screen.
+ * Displays a list of all available exercises, including personal records.
  *
- * @param exercises The list of Exercise objects to be displayed.
- * @param onAddExercise A callback function to be invoked when the user wants to add a new exercise.
- * @param onNavigateBack A callback function to navigate back to the previous screen.
+ * @param exercises The list of Exercise objects to display.
+ * @param onAddExercise Callback to navigate to the creation screen.
+ * @param onEditExercise Callback to navigate to the editing screen for a specific exercise.
+ * @param onNavigateBack Callback to navigate back.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExerciseLibraryScreen(
     exercises: List<Exercise>,
     onAddExercise: () -> Unit,
+    onEditExercise: (Exercise) -> Unit,
     onNavigateBack: () -> Unit
 ) {
     Scaffold(
@@ -31,91 +33,68 @@ fun ExerciseLibraryScreen(
             TopAppBar(
                 title = { Text("Exercise Library") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        // In a real app, you'd use an Icon here e.g., Icons.Auto.Mirrored.Filled.ArrowBack
-                        Text("Back")
-                    }
+                    IconButton(onClick = onNavigateBack) { Text("Back") }
                 }
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddExercise) {
-                // In a real app, you'd use an Icon here e.g., Icons.Default.Add
                 Text("+", fontSize = 24.sp)
             }
         }
     ) { paddingValues ->
-        // Check if the list of exercises is empty.
         if (exercises.isEmpty()) {
-            // If it's empty, display a message in the center of the screen.
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Your exercise library is empty.\nTap the '+' button to add a new exercise.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = "Your exercise library is empty.\nTap the '+' button to add an exercise.",
                     textAlign = TextAlign.Center
                 )
             }
         } else {
-            // If the list is not empty, display the exercises in a LazyColumn.
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(exercises) { exercise ->
-                    ExerciseListItem(exercise = exercise)
+                    ExerciseLibraryItem(
+                        exercise = exercise,
+                        onEditClick = { onEditExercise(exercise) }
+                    )
                 }
             }
         }
     }
 }
 
-/**
- * A Composable that represents a single item in the exercise list.
- * It displays the key details of an exercise in a styled card.
- *
- * @param exercise The Exercise object to display.
- */
 @Composable
-fun ExerciseListItem(exercise: Exercise) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Display Exercise Name
-            Text(
-                text = exercise.name,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-
-            // Display Overall Muscle Group
+fun ExerciseLibraryItem(exercise: Exercise, onEditClick: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = exercise.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedButton(onClick = onEditClick) {
+                    Text("Edit")
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Category: ${exercise.overallMuscleGroup}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary
             )
-
-            // Display Sets, Reps, and Weight details
-            Text(
-                text = "${exercise.sets} sets of ${exercise.reps.joinToString("/")} reps @ ${exercise.weight} kg",
-                style = MaterialTheme.typography.bodyMedium
-            )
-
-            // Display specific muscle groups if available
             if (exercise.muscleGroups.isNotEmpty()) {
                 Text(
                     text = "Muscles: ${exercise.muscleGroups.joinToString(", ")}",
@@ -123,6 +102,24 @@ fun ExerciseListItem(exercise: Exercise) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            Spacer(modifier = Modifier.height(8.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                RecordStat("Max Weight", "${exercise.maxWeight} kg")
+                RecordStat("Max Reps", "${exercise.maxReps}")
+            }
         }
+    }
+}
+
+@Composable
+fun RecordStat(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = label, style = MaterialTheme.typography.labelMedium)
+        Text(text = value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
     }
 }

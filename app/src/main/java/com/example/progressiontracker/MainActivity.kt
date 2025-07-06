@@ -1,69 +1,48 @@
 package com.example.progressiontracker
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 
-/**
- * The main entry point of the application.
- * This activity hosts all the composable screens and sets up the navigation.
- */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Lazy initialization of the database and repository
         val database by lazy { FitnessDatabase.getDatabase(application) }
         val repository by lazy { FitnessRepository(database.exerciseDao(), database.workoutDao(), database.completedWorkoutDao()) }
         val viewModelFactory = FitnessViewModelFactory(repository)
 
         setContent {
-            // Assuming a default MaterialTheme is set up in a Theme.kt file
             MaterialTheme {
-                // Initialize the ViewModel using the factory
                 val viewModel: FitnessViewModel = viewModel(factory = viewModelFactory)
-                // Set up the navigation graph for the entire app
-                FitnessAppNavigation(viewModel)
+                FitnessAppNavigationV2(viewModel)
             }
         }
     }
 }
 
-/**
- * Composable function that defines the navigation graph for the app.
- * It controls which screen is shown based on the current route.
- *
- * @param viewModel The main ViewModel instance shared across all screens.
- */
 @Composable
-fun FitnessAppNavigation(viewModel: FitnessViewModel) {
+fun FitnessAppNavigationV2(viewModel: FitnessViewModel) {
     val navController = rememberNavController()
-
-    // Collect states from the ViewModel. Compose will automatically recompose
-    // when these state values change.
     val exercises by viewModel.allExercises.collectAsState()
-    val workouts by viewModel.allWorkouts.collectAsState()
+    val workoutsWithSets by viewModel.allWorkoutsWithSets.collectAsState()
     val history by viewModel.workoutHistory.collectAsState()
-    val activeSession by viewModel.activeWorkoutSession
 
-    // A temporary state to hold the results from the active workout screen
-    // before passing them to the summary screen.
-    var workoutResultForSummary by remember { mutableStateOf<Pair<Long, Map<String, List<Boolean>>>?>(null) }
-
-    // NavHost is the container for all navigation destinations.
     NavHost(navController = navController, startDestination = "home") {
 
-        // Home Screen
         composable("home") {
             HomeScreen(
-                workouts = workouts,
+                workouts = workoutsWithSets,
                 onStartWorkout = { workout ->
-                    viewModel.prepareWorkoutSession(workout)
+                    viewModel.startWorkoutSession(workout)
                     navController.navigate("active_workout")
                 },
                 onNavigateToWorkoutCreation = { navController.navigate("workout_creation") },
@@ -72,80 +51,73 @@ fun FitnessAppNavigation(viewModel: FitnessViewModel) {
             )
         }
 
-        // Exercise Library Screen
         composable("exercise_library") {
             ExerciseLibraryScreen(
                 exercises = exercises,
                 onAddExercise = { navController.navigate("exercise_creation") },
+                onEditExercise = { exercise ->
+                    navController.navigate("exercise_creation?exerciseId=${exercise.id}")
+                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
 
-        // Exercise Creation Screen
-        composable("exercise_creation") {
+        composable(
+            route = "exercise_creation?exerciseId={exerciseId}",
+            arguments = listOf(navArgument("exerciseId") {
+                type = NavType.StringType
+                nullable = true
+            })
+        ) { backStackEntry ->
+            val exerciseId = backStackEntry.arguments?.getString("exerciseId")
+            val existingExercise = exercises.find { it.id == exerciseId }
             ExerciseCreationScreen(
+                existingExercise = existingExercise,
                 onSaveExercise = { exercise ->
-                    viewModel.addExercise(exercise)
+                    viewModel.upsertExercise(exercise)
                     navController.popBackStack()
                 },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
 
-        // Workout Creation Screen
         composable("workout_creation") {
             WorkoutCreationScreen(
                 allExercises = exercises,
-                onSaveWorkout = { workout ->
-                    viewModel.addWorkout(workout)
+                onSaveWorkout = { workout, sets ->
+                    viewModel.upsertWorkoutTemplate(workout, sets)
                     navController.popBackStack()
                 },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
 
-        // Active Workout Screen
         composable("active_workout") {
-            activeSession?.let { session ->
-                ActiveWorkoutScreen(
-                    sessionDetails = session,
-                    onFinishWorkout = { duration, completedSets ->
-                        workoutResultForSummary = duration to completedSets
-                        navController.navigate("summary") {
-                            // Clear the back stack up to home so the user can't go back to the workout
-                            popUpTo("home")
-                        }
-                    },
-                    onNavigateBack = {
-                        viewModel.clearWorkoutSession()
-                        navController.popBackStack()
-                    }
-                )
-            }
+            ActiveWorkoutScreen(
+                activeExercises = viewModel.activeWorkoutExercises,
+                onFinishWorkout = { duration ->
+                    navController.navigate("workout_summary/${duration}")
+                },
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
-        // Workout Summary Screen
-        composable("summary") {
-            val session = activeSession
-            val result = workoutResultForSummary
-            if (session != null && result != null) {
-                WorkoutSummaryScreen(
-                    sessionDetails = session,
-                    totalDurationInSeconds = result.first,
-                    completedSets = result.second,
-                    onSaveAndFinish = { completedWorkout ->
-                        viewModel.saveCompletedWorkout(completedWorkout)
-                        viewModel.clearWorkoutSession()
-                        navController.navigate("home") {
-                            // Go back to home and clear the history so the user can't go back to the summary
-                            popUpTo("home") { inclusive = true }
-                        }
+        composable(
+            route = "workout_summary/{duration}",
+            arguments = listOf(navArgument("duration") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val duration = backStackEntry.arguments?.getLong("duration") ?: 0L
+            WorkoutSummaryScreen(
+                onSaveAndFinish = { updateTemplate ->
+                    viewModel.finishWorkout(duration, updateTemplate)
+                    navController.navigate("home") {
+                        popUpTo("home") { inclusive = true }
                     }
-                )
-            }
+                },
+                onCancel = { navController.popBackStack() }
+            )
         }
 
-        // Workout History Screen
         composable("history") {
             WorkoutHistoryScreen(
                 history = history,
