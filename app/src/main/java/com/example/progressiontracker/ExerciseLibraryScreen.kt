@@ -59,7 +59,7 @@ fun ExerciseLibraryScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(exercises) { exercise ->
+                items(exercises, key = { it.id }) { exercise ->
                     ExerciseLibraryItem(
                         exercise = exercise,
                         onEditClick = { onEditExercise(exercise) }
@@ -90,21 +90,28 @@ fun ExerciseLibraryItem(exercise: Exercise, onEditClick: () -> Unit) {
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Category: ${exercise.overallMuscleGroup}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            if (exercise.muscleGroups.isNotEmpty()) {
+
+            // Displaying the tiered muscles
+            if (exercise.primaryMuscleIds.isNotEmpty()) {
                 Text(
-                    text = "Muscles: ${exercise.muscleGroups.joinToString(", ")}",
+                    "Primary: ${exercise.primaryMuscleIds.size} muscles",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            if (exercise.secondaryMuscleIds.isNotEmpty()) {
+                Text(
+                    "Secondary: ${exercise.secondaryMuscleIds.size} muscles",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+
             Spacer(modifier = Modifier.height(8.dp))
             HorizontalDivider()
             Spacer(modifier = Modifier.height(8.dp))
+
+            // Displaying the personal records
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceAround

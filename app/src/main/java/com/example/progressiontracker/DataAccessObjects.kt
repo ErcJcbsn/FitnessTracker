@@ -3,6 +3,21 @@ package com.example.progressiontracker
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Data Access Object for the new Muscle entity.
+ */
+@Dao
+interface MuscleDao {
+    @Upsert
+    suspend fun upsertMuscle(muscle: Muscle)
+
+    @Query("SELECT * FROM muscles ORDER BY name ASC")
+    fun getAllMuscles(): Flow<List<Muscle>>
+}
+
+/**
+ * Data Access Object for the updated Exercise entity.
+ */
 @Dao
 interface ExerciseDao {
     @Upsert
@@ -18,6 +33,9 @@ interface ExerciseDao {
     suspend fun updateExerciseRecords(exerciseId: String, newMaxWeight: Double, newMaxReps: Int)
 }
 
+/**
+ * Data Access Object for Workout templates. Unchanged from v2.0.
+ */
 @Dao
 interface WorkoutDao {
     @Upsert
@@ -41,6 +59,9 @@ interface WorkoutDao {
     suspend fun deleteWorkout(workout: Workout)
 }
 
+/**
+ * Data Access Object for workout history. Unchanged from v2.0.
+ */
 @Dao
 interface CompletedWorkoutDao {
     @Insert
@@ -49,12 +70,10 @@ interface CompletedWorkoutDao {
     @Insert
     suspend fun insertCompletedSets(sets: List<CompletedSet>)
 
-    // This is the corrected query that uses the new relational class
     @Transaction
     @Query("SELECT * FROM completed_workouts ORDER BY completionDate DESC")
     fun getAllCompletedWorkoutsWithSets(): Flow<List<CompletedWorkoutWithSets>>
 
-    // ADDED THIS simple query for the history screen list
     @Query("SELECT * FROM completed_workouts ORDER BY completionDate DESC")
     fun getCompletedWorkouts(): Flow<List<CompletedWorkout>>
 }

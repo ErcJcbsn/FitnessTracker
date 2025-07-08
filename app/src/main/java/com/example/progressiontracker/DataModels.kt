@@ -3,7 +3,7 @@ package com.example.progressiontracker
 import androidx.room.*
 import java.util.Date
 
-// The Converters class remains the same.
+// The Converters class remains the same as it's a general utility.
 class Converters {
     @TypeConverter
     fun fromTimestamp(value: Long?): Date? = value?.let { Date(it) }
@@ -21,13 +21,24 @@ class Converters {
 
 // --- DATABASE ENTITIES (TABLES) ---
 
+@Entity(tableName = "muscles")
+data class Muscle(
+    @PrimaryKey val id: String = java.util.UUID.randomUUID().toString(),
+    val name: String,
+    val overallMuscleGroup: String,
+    val isUserAdded: Boolean = false
+)
+
 @Entity(tableName = "exercises")
 @TypeConverters(Converters::class)
 data class Exercise(
     @PrimaryKey val id: String = java.util.UUID.randomUUID().toString(),
     val name: String,
-    val overallMuscleGroup: String,
-    val muscleGroups: List<String>,
+    // These lists will store the IDs of the muscles from the 'muscles' table.
+    val primaryMuscleIds: List<String>,
+    val secondaryMuscleIds: List<String>,
+    val tertiaryMuscleIds: List<String>,
+    // Personal records for this exercise
     val maxWeight: Double = 0.0,
     val maxReps: Int = 0
 )
@@ -94,7 +105,6 @@ data class WorkoutWithSets(
     val sets: List<WorkoutSet>
 )
 
-// NEW CLASS TO FIX THE BUG
 data class CompletedWorkoutWithSets(
     @Embedded val completedWorkout: CompletedWorkout,
     @Relation(

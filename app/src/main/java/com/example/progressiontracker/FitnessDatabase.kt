@@ -7,24 +7,25 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
 /**
- * The main Room Database class for the application.
- * This class is abstract and annotated with @Database. It lists all the entities (tables)
- * that are part of this database and the database version.
+ * The main Room Database class for the v4.0 application.
  */
 @Database(
     entities = [
+        Muscle::class, // <-- Added new Muscle entity
         Exercise::class,
         Workout::class,
         WorkoutSet::class,
         CompletedWorkout::class,
         CompletedSet::class
     ],
-    version = 2, // <-- THE FIX: Version number is now 2
+    version = 3, // <-- THE FIX: Version number is now 3 to reflect the new schema
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class FitnessDatabase : RoomDatabase() {
 
+    // Add an abstract method for the new MuscleDao
+    abstract fun muscleDao(): MuscleDao
     abstract fun exerciseDao(): ExerciseDao
     abstract fun workoutDao(): WorkoutDao
     abstract fun completedWorkoutDao(): CompletedWorkoutDao
@@ -40,8 +41,7 @@ abstract class FitnessDatabase : RoomDatabase() {
                     FitnessDatabase::class.java,
                     "fitness_database"
                 )
-                    // Wipes and rebuilds instead of migrating if no Migration object.
-                    // This is what will be triggered by the version change.
+                    // Wipes and rebuilds the database on version change.
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

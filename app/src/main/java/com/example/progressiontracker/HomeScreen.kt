@@ -11,13 +11,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 /**
- * The main dashboard screen of the v2.0 application.
- *
- * @param workouts The list of workout templates (with their sets) to display.
- * @param onStartWorkout Callback invoked when the user taps on a workout to start it.
- * @param onNavigateToWorkoutCreation Callback to navigate to the workout creation screen.
- * @param onNavigateToExerciseLibrary Callback to navigate to the exercise library.
- * @param onNavigateToHistory Callback to navigate to the workout history screen.
+ * The main dashboard screen for the v4.0 application.
+ * Includes navigation to the new progression screens.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,7 +21,8 @@ fun HomeScreen(
     onStartWorkout: (WorkoutWithSets) -> Unit,
     onNavigateToWorkoutCreation: () -> Unit,
     onNavigateToExerciseLibrary: () -> Unit,
-    onNavigateToHistory: () -> Unit
+    onNavigateToVolumeProgression: () -> Unit,
+    onNavigateToMaxLiftProgression: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -43,21 +39,25 @@ fun HomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Navigation Buttons
+            // --- Main Navigation Buttons ---
+            Button(onClick = onNavigateToWorkoutCreation, modifier = Modifier.fillMaxWidth()) {
+                Text("Create New Workout")
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Button(onClick = onNavigateToWorkoutCreation, modifier = Modifier.weight(1f)) {
-                    Text("New Workout")
+                Button(onClick = onNavigateToVolumeProgression, modifier = Modifier.weight(1f)) {
+                    Text("Volume Stats")
                 }
-                Button(onClick = onNavigateToExerciseLibrary, modifier = Modifier.weight(1f)) {
-                    Text("Exercises")
+                Button(onClick = onNavigateToMaxLiftProgression, modifier = Modifier.weight(1f)) {
+                    Text("Max Lift Stats")
                 }
             }
-            Button(onClick = onNavigateToHistory, modifier = Modifier.fillMaxWidth()) {
-                Text("View Workout History")
+            Button(onClick = onNavigateToExerciseLibrary, modifier = Modifier.fillMaxWidth()) {
+                Text("Manage Exercises")
             }
+
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
@@ -69,7 +69,7 @@ fun HomeScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "You haven't created any workouts yet.\nTap 'New Workout' to get started.",
+                        text = "You haven't created any workouts yet.\nTap 'Create New Workout' to get started.",
                         textAlign = TextAlign.Center
                     )
                 }
@@ -93,7 +93,6 @@ fun HomeScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkoutCard(workoutWithSets: WorkoutWithSets, onClick: () -> Unit) {
-    // Calculate the number of unique exercises in the workout
     val exerciseCount = workoutWithSets.sets.map { it.exerciseId }.distinct().size
 
     Card(

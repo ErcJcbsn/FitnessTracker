@@ -3,23 +3,32 @@ package com.example.progressiontracker
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Repository class that abstracts access to multiple data sources (the DAOs).
- * It is the single source of truth for the application's data.
+ * Repository for the v4.0 app. It now includes the MuscleDao.
  *
+ * @param muscleDao The DAO for the muscle databank.
  * @param exerciseDao The DAO for exercise data.
  * @param workoutDao The DAO for workout template data.
  * @param completedWorkoutDao The DAO for workout history data.
  */
 class FitnessRepository(
+    private val muscleDao: MuscleDao,
     private val exerciseDao: ExerciseDao,
     private val workoutDao: WorkoutDao,
     private val completedWorkoutDao: CompletedWorkoutDao
 ) {
-    // Expose Flows for the UI to observe lists of data.
+    // Expose Flows for observing lists of data.
+    val allMuscles: Flow<List<Muscle>> = muscleDao.getAllMuscles()
     val allExercises: Flow<List<Exercise>> = exerciseDao.getAllExercises()
     val allWorkoutsWithSets: Flow<List<WorkoutWithSets>> = workoutDao.getAllWorkoutsWithSets()
-    // This now correctly uses the simple query for the history list.
     val completedWorkoutsHistory: Flow<List<CompletedWorkout>> = completedWorkoutDao.getCompletedWorkouts()
+    // Flow to get all completed sets for volume calculation
+    val allCompletedWorkoutsWithSets: Flow<List<CompletedWorkoutWithSets>> = completedWorkoutDao.getAllCompletedWorkoutsWithSets()
+
+
+    // --- Muscle Methods ---
+    suspend fun upsertMuscle(muscle: Muscle) {
+        muscleDao.upsertMuscle(muscle)
+    }
 
     // --- Exercise Methods ---
     suspend fun upsertExercise(exercise: Exercise) {
@@ -33,7 +42,6 @@ class FitnessRepository(
     // --- Workout Template Methods ---
     suspend fun upsertWorkoutWithSets(workout: Workout, sets: List<WorkoutSet>) {
         workoutDao.upsertWorkout(workout)
-        // Ensure data consistency by replacing old sets with the new list
         workoutDao.deleteWorkoutSetsByWorkoutId(workout.id)
         workoutDao.insertWorkoutSets(sets)
     }
@@ -46,7 +54,7 @@ class FitnessRepository(
     suspend fun saveCompletedWorkoutSession(
         completedWorkout: CompletedWorkout,
         completedSets: List<CompletedSet>,
-        exercisesToUpdate: Map<String, Pair<Double, Int>> // Map<ExerciseID, Pair<newMaxWeight, newMaxReps>>
+        exercisesToUpdate: Map<String, Pair<Double, Int>>
     ) {
         completedWorkoutDao.insertCompletedWorkout(completedWorkout)
         completedWorkoutDao.insertCompletedSets(completedSets)

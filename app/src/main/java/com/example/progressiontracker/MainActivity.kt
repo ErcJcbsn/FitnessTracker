@@ -16,25 +16,37 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // The database initialization now needs the MuscleDao as well
         val database by lazy { FitnessDatabase.getDatabase(application) }
-        val repository by lazy { FitnessRepository(database.exerciseDao(), database.workoutDao(), database.completedWorkoutDao()) }
+        val repository by lazy {
+            FitnessRepository(
+                muscleDao = database.muscleDao(),
+                exerciseDao = database.exerciseDao(),
+                workoutDao = database.workoutDao(),
+                completedWorkoutDao = database.completedWorkoutDao()
+            )
+        }
         val viewModelFactory = FitnessViewModelFactory(repository)
 
         setContent {
             MaterialTheme {
                 val viewModel: FitnessViewModel = viewModel(factory = viewModelFactory)
-                FitnessAppNavigationV2(viewModel)
+                FitnessAppNavigationV4(viewModel)
             }
         }
     }
 }
 
 @Composable
-fun FitnessAppNavigationV2(viewModel: FitnessViewModel) {
+fun FitnessAppNavigationV4(viewModel: FitnessViewModel) {
     val navController = rememberNavController()
+    val muscles by viewModel.allMuscles.collectAsState()
     val exercises by viewModel.allExercises.collectAsState()
     val workoutsWithSets by viewModel.allWorkoutsWithSets.collectAsState()
-    val history by viewModel.workoutHistory.collectAsState()
+
+    // Collect the new progression data from the ViewModel
+    val volumeChartData by viewModel.volumeProgressionData.collectAsState()
+    val maxLiftData by viewModel.maxLiftProgressionData.collectAsState()
 
     NavHost(navController = navController, startDestination = "home") {
 
@@ -47,7 +59,8 @@ fun FitnessAppNavigationV2(viewModel: FitnessViewModel) {
                 },
                 onNavigateToWorkoutCreation = { navController.navigate("workout_creation") },
                 onNavigateToExerciseLibrary = { navController.navigate("exercise_library") },
-                onNavigateToHistory = { navController.navigate("history") }
+                onNavigateToVolumeProgression = { navController.navigate("volume_progression") },
+                onNavigateToMaxLiftProgression = { navController.navigate("max_lift_progression") }
             )
         }
 
@@ -71,11 +84,15 @@ fun FitnessAppNavigationV2(viewModel: FitnessViewModel) {
         ) { backStackEntry ->
             val exerciseId = backStackEntry.arguments?.getString("exerciseId")
             val existingExercise = exercises.find { it.id == exerciseId }
-            ExerciseCreationScreen(
+            ExerciseCreationScreenV4(
+                allMuscles = muscles,
                 existingExercise = existingExercise,
                 onSaveExercise = { exercise ->
                     viewModel.upsertExercise(exercise)
                     navController.popBackStack()
+                },
+                onUpsertMuscle = { muscle ->
+                    viewModel.upsertMuscle(muscle)
                 },
                 onNavigateBack = { navController.popBackStack() }
             )
@@ -118,9 +135,20 @@ fun FitnessAppNavigationV2(viewModel: FitnessViewModel) {
             )
         }
 
-        composable("history") {
-            WorkoutHistoryScreen(
-                history = history,
+        composable("volume_progression") {
+            VolumeProgressionScreen(
+                chartDataSets = volumeChartData,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable("max_lift_progression") {
+            MaxLiftProgressionScreen(
+                allExercises = exercises,
+                liftDataPoints = maxLiftData,
+                onExerciseSelected = { exercise ->
+                    viewModel.processMaxLiftHistory(exercise.id)
+                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
